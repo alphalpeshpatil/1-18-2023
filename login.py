@@ -38,8 +38,6 @@ def login_is_required(function):
 
     return wrapper
 
-
-@app.route("/login")
 def login():
     authorization_url, state = flow.authorization_url()
     session["state"] = state
