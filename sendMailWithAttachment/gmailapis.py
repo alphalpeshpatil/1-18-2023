@@ -1,5 +1,9 @@
 from email import encoders
+from email.mime.audio import MIMEAudio
 from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
+import io
+import mimetypes
 import pathlib
 from flask import jsonify
 from google.auth.transport.requests import Request
@@ -57,7 +61,8 @@ def gmail_auth():
         print(ex)
         return str(ex)
 
-def send_message():
+def send_message(mailid,cc,bcc,subject,body,file):
+    msg=send_message_with_Attachment(mailid,cc,bcc,subject,body,file)
     try:
         client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "credentials.json")
         flow = Flow.from_client_secrets_file(
@@ -65,45 +70,76 @@ def send_message():
         scopes=["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email", "openid"]
         # redirect_uri="http://127.0.0.1:5000/callback"
 )
-
         authorization_url, state = flow.authorization_url()
         service =Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
 
-        emailMsg = 'You won rs 100,000'
-        mimeMessage = MIMEMultipart()
-        # multipurpose internet mail extension_json=request.json
-        _json=request.json
-        mimeMessage['to']=_json['mailid']
-        mimeMessage['cc']=_json['cc']
-        mimeMessage['bcc']=_json['bcc']
-        mimeMessage['subject'] = 'You won'
-        mimeMessage.attach(MIMEText(emailMsg, 'plain'))
-        filename = "IMG20220902183558.jpg"
-        # rb opens file in binary format and wb is for writing
-        attachment = open("F:\alpesh photos\IMG20220902183558.jpg", "rb") 
-        # instance of MIMEBase and named as p
-        p = MIMEBase('application', 'octet-stream')
-
-        # To change the payload into encoded form
-        p.set_payload((attachment).read())
-
-        # encode into base64
-        encoders.encode_base64(p)
-
-        p.add_header('Content-Disposition', "attachment; filename= %s" % filename)
-
-        # attach the instance 'p' to instance 'msg'
-        mimeMessage.attach(p)
-        raw_string = base64.urlsafe_b64encode(mimeMessage.as_bytes()).decode()
-
-        message = service.users().messages().send(userId='me', body={'raw': raw_string}).execute()
-        print(message)
-
+        # message = service.users().messages().send(userId='me', body={'raw': raw_string}).execute()
+        draft = service.users().messages().send(userId="me",body=msg).execute()
+        print(draft)
+        print("Message sent successfuly!!!!")
     except HttpError as error:
-            print(F'An error occurred: {error}')
-            send_message = None
-    # print(send_message)
-    return message
+        print(F'An error occurred: {error}')
+        draft = None
+    return draft
+# def convertToBinaryData(filename):
+#     # Convert digital data to binary format
+#     with open(filename, 'rb') as file:
+#         binaryData = file.read()
+#     return binaryData
+def send_message_with_Attachment(mailid,cc,bcc,subject,body,file):
+
+        message = MIMEMultipart()
+        message['to'] = mailid
+        message['cc']=cc
+        message['bcc']=bcc
+        message['subject'] = subject
+
+        msg = MIMEText(body)
+        message.attach(msg)
+        # buffer = io.BytesIO()     # create file in memory
+        # file.save(buffer, 'jpeg') # save in file in memory - it has to be `jpeg`, not `jpg`
+        # buffer.seek(0)            # move to the beginning of file
+
+        # file = buffer 
+        # file='butterfly.jpg'
+        # print((file)
+        # print(type(file))
+        # file = convertToBinaryData(file)
+        file = str(file.filename)
+        (content_type, encoding) = mimetypes.guess_type(file)
+
+        if content_type is None or encoding is not None:
+            content_type = 'application/octet-stream'
+
+        (main_type, sub_type) = content_type.split('/', 1)
+        # print(file)
+        if main_type == 'text':
+            with open(file, 'rb') as f:
+                msg = MIMEText(f.read().decode('utf-8'), _subtype=sub_type)
+        elif main_type == 'image':
+                f=open(file,'rb')
+                msg=MIMEImage(f.read(),_subtype=sub_type)
+                f.close()
+        elif main_type == 'audio':
+            with open(file, 'rb') as f:
+                msg = MIMEAudio(f.read(), _subtype=sub_type)
+            
+        else:
+            with open(file, 'rb') as f:
+                msg = MIMEBase(main_type, sub_type)
+                msg.set_payload(f.read())
+
+        filename = os.path.basename(file)
+        msg.add_header('Content-Disposition', 'attachment',
+                    filename=filename)
+        message.attach(msg)
+
+        raw_message = \
+            base64.urlsafe_b64encode(message.as_string().encode('utf-8'))
+        return {'raw': raw_message.decode('utf-8')}
+    
+
+
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly','https://www.googleapis.com/auth/gmail.modify']
 

@@ -20,7 +20,7 @@ app.secret_key = "CodeSpecialist.com"
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-GOOGLE_CLIENT_ID = "900829648049-0ku7po9bm2krea7iogs3m0to737jbgf6.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "900829648049-quo4shsm3pa4apj23t6hltih0p2t6tci.apps.googleusercontent.com"
 client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "credentials.json")
 
 flow = Flow.from_client_secrets_file(
